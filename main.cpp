@@ -11,7 +11,14 @@ public:
         std::cout << "conn\n";
     }
     ~Session() { std::cout << "disconn\n"; }
-    void on_open() override { std::cout << "on_open\n"; }
+    void on_open() override {
+        std::cout << "on_open\n";
+
+        for (auto &kv : headers_) {
+            std::cout << kv.first << ": " << kv.second << std::endl;
+        }
+        std::cout << std::endl;;
+    }
     void on_msg() override { std::cout << "on_msg\n"; }
     void on_close() override { std::cout << "on_close\n"; }
 private:
