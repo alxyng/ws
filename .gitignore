@@ -30,5 +30,8 @@
 # Build files
 main
 
+# Debug files
+*.dSYM
+
 # Mac OS X
 .DS_Store

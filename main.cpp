@@ -23,12 +23,20 @@ public:
         std::cout << "on_open\n";
 
         for (auto &kv : headers_)
-            std::cout << kv.first << ": " << kv.second << std::endl;
+            // std::cout << kv.first << ": " << kv.second << std::endl;
         std::cout << std::endl;
     }
 
     void on_msg(const ws::message &msg) override {
         std::cout << "on_msg\n";
+
+        buffer_[0] = 'h';
+        buffer_[1] = 'e';
+        buffer_[2] = 'l';
+        buffer_[3] = 'l';
+        buffer_[4] = 'o';
+
+        write(ws::message::opcode::binary, boost::asio::buffer(buffer_, 5));
     }
 
     void on_close() override {

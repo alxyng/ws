@@ -1,16 +1,18 @@
 #ifndef WS_SESSION_HPP
 #define WS_SESSION_HPP
 
+#include <array>
 #include <iostream>
 #include <memory>
 #include <regex>
 #include <unordered_map>
 #include <boost/asio.hpp>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
-#include <openssl/evp.h>
-#include <openssl/sha.h>
 #include "message.hpp"
+
+#include "base64encode.h"
+#include "base64encode.c"
+#include "sha1.h"
+#include "sha1.c"
 
 using boost::asio::ip::tcp;
 
@@ -48,7 +50,7 @@ protected:
                     [this, self](const boost::system::error_code &ec, std::size_t)
                 {
                     if (!ec) {
-                        read();
+                        //read();
                     }
                 });
 
@@ -78,21 +80,13 @@ private:
 
         /* SHA1 hash the key-GUID */
         std::array<unsigned char, 20> hash;
-        SHA1((const unsigned char *)key.data(), key.length(), hash.data());
+        SHA1((char *)hash.data(), key.data(), key.length());
 
         /* Base64 encode the SHA1 hash */
-        BIO *bio, *b64;
-        BUF_MEM *bufferPtr;
-        b64 = BIO_new(BIO_f_base64());
-        bio = BIO_new(BIO_s_mem());
-        bio = BIO_push(b64, bio);
-        BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-        BIO_write(bio, hash.data(), hash.size());
-        BIO_flush(bio);
-        BIO_get_mem_ptr(bio, &bufferPtr);
-        key = std::string(bufferPtr->data, bufferPtr->length);
-        BIO_set_close(bio, BIO_NOCLOSE);
-        BIO_free_all(bio);
+        char b64[32];
+        std::ptrdiff_t diff = base64_encode(hash.data(), hash.size(), b64);
+        std::cout << diff << std::endl;
+        key = std::string(b64, diff);
     }
 
     void read_handshake() {
@@ -145,23 +139,25 @@ private:
             if (!ec) {
                 if (!error) {
                     on_open();
-                    read();
+                    // read();
                 }
             }
         });
     }
 
-    void read() {
-        auto self(shared_from_this());
-        boost::asio::async_read(socket_, in_buffer_,
-            boost::asio::transfer_exactly(2),
-                [this, self](const boost::system::error_code &ec, std::size_t)
-        {
-            if (!ec) {
-                //
-            }
-        });
-    }
+    // void read() {
+    //     auto self(shared_from_this());
+    //     boost::asio::async_read(socket_, in_buffer_,
+    //         boost::asio::transfer_exactly(2),
+    //             [this, self](const boost::system::error_code &ec, std::size_t)
+    //     {
+    //         if (!ec) {
+    //             // TODO: parse parse parse
+    //             //message msg;
+    //             //on_msg(msg);
+    //         }
+    //     });
+    // }
 };
 
 } /* namespace ws */
