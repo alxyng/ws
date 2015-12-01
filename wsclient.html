@@ -24,8 +24,8 @@
         };
         ws.onmessage = function(event) {
             data = new Uint8Array(event.data);
-            /*str = String.fromCharCode.apply(null, data);
-            console.log(new Date().getTime(), "message: " + str);*/
+            str = String.fromCharCode.apply(null, data);
+            console.log(new Date().getTime(), "message: " + str);
             console.log(new Date().getTime(), data);
         };
         ws.onclose = function() {

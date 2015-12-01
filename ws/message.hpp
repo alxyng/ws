@@ -1,6 +1,8 @@
 #ifndef WS_MESSAGE_HPP
 #define WS_MESSAGE_HPP
 
+#include <vector>
+
 namespace ws {
 
 class message {
@@ -16,15 +18,23 @@ public:
         pong = 0x0a
     };
 
-    message() : opcode_(opcode::connection_close) { }
+    message() : opcode_(opcode::connection_close) {
+        // tmp
+        payload_ = {'w', 'u', 't'};
+    }
 
     opcode get_opcode() const;
 
     void set_opcode(opcode op) {
         opcode_ = op;
     }
+
+    const std::vector<unsigned char> &get_payload() const {
+        return payload_;
+    }
 private:
     opcode opcode_;
+    std::vector<unsigned char> payload_;
 };
 
 } /* namespace ws */

@@ -38,22 +38,21 @@ protected:
     void write(message::opcode opcode, const boost::asio::const_buffer &buffer) {
         auto self(shared_from_this());
 
-        std::size_t payload_length = boost::asio::buffer_size(buffer);
         // TODO prepare header then write the header
+        std::size_t payload_length = boost::asio::buffer_size(buffer);
+        const char *data =
+            boost::asio::buffer_cast<const char*>(buffer);
+
+        std::ostream out(&out_buffer_);
+
+        out << '\x82' << '\x05';
+        out.write(data, payload_length);
 
         boost::asio::async_write(socket_, out_buffer_,
-            boost::asio::transfer_exactly(0),
-                [this, self, &buffer](const boost::system::error_code &ec, std::size_t)
+            [this, self](const boost::system::error_code &ec, std::size_t)
         {
             if (!ec) {
-                boost::asio::async_write(socket_, boost::asio::buffer(buffer),
-                    [this, self](const boost::system::error_code &ec, std::size_t)
-                {
-                    if (!ec) {
-                        //read();
-                    }
-                });
-
+                //
             }
         });
 
@@ -139,25 +138,25 @@ private:
             if (!ec) {
                 if (!error) {
                     on_open();
-                    // read();
+                    read();
                 }
             }
         });
     }
 
-    // void read() {
-    //     auto self(shared_from_this());
-    //     boost::asio::async_read(socket_, in_buffer_,
-    //         boost::asio::transfer_exactly(2),
-    //             [this, self](const boost::system::error_code &ec, std::size_t)
-    //     {
-    //         if (!ec) {
-    //             // TODO: parse parse parse
-    //             //message msg;
-    //             //on_msg(msg);
-    //         }
-    //     });
-    // }
+    void read() {
+        auto self(shared_from_this());
+        boost::asio::async_read(socket_, in_buffer_,
+            boost::asio::transfer_exactly(2),
+                [this, self](const boost::system::error_code &ec, std::size_t)
+        {
+            if (!ec) {
+                // TODO: parse parse parse
+                message msg;
+                on_msg(msg);
+            }
+        });
+    }
 };
 
 } /* namespace ws */

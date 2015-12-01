@@ -22,13 +22,21 @@ public:
     void on_open() override {
         std::cout << "on_open\n";
 
-        for (auto &kv : headers_)
-            // std::cout << kv.first << ": " << kv.second << std::endl;
-        std::cout << std::endl;
+        // for (auto &kv : headers_)
+        //     std::cout << kv.first << ": " << kv.second << std::endl;
+        // std::cout << std::endl;
     }
 
     void on_msg(const ws::message &msg) override {
         std::cout << "on_msg\n";
+
+        const std::vector<unsigned char> &payload = msg.get_payload();
+
+        std::copy(payload.begin(), payload.end(), buffer_.begin());
+
+        for (auto &i : buffer_)
+            std::cout << i;
+        std::cout << std::endl;
 
         buffer_[0] = 'h';
         buffer_[1] = 'e';
@@ -44,6 +52,8 @@ public:
     }
 
 private:
+
+    /* Buffer for receiving/sending data on top of the web socket protocol */
     std::array<unsigned char, 65536> buffer_;
 };
 
