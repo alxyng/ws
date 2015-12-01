@@ -6,6 +6,11 @@
 #include <regex>
 #include <unordered_map>
 #include <boost/asio.hpp>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
+#include "message.hpp"
 
 using boost::asio::ip::tcp;
 
@@ -21,18 +26,73 @@ public:
     }
 
 protected:
-    virtual void on_open() = 0;
-    virtual void on_msg() = 0;
-    virtual void on_close() = 0;
     std::unordered_map<std::string, std::string> headers_;
+
+    virtual void on_open() = 0;
+    virtual void on_msg(const ws::message &msg) = 0;
+    virtual void on_close() = 0;
+
+    /* Async write data out */
+    void write(message::opcode opcode, const boost::asio::const_buffer &buffer) {
+        auto self(shared_from_this());
+
+        std::size_t payload_length = boost::asio::buffer_size(buffer);
+        // TODO prepare header then write the header
+
+        boost::asio::async_write(socket_, out_buffer_,
+            boost::asio::transfer_exactly(0),
+                [this, self, &buffer](const boost::system::error_code &ec, std::size_t)
+        {
+            if (!ec) {
+                boost::asio::async_write(socket_, boost::asio::buffer(buffer),
+                    [this, self](const boost::system::error_code &ec, std::size_t)
+                {
+                    if (!ec) {
+                        read();
+                    }
+                });
+
+            }
+        });
+
+    };
+
+    /* Close connection (initiates closing handshake) */
+    void close() {
+        //
+    }
+
+    const tcp::socket &get_socket() {
+        return socket_;
+    }
 
 private:
     tcp::socket socket_;
     boost::asio::streambuf in_buffer_;
     boost::asio::streambuf out_buffer_;
+    message msg_;
 
     void generate_accept(std::string &key) const {
         const std::string GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+        key += GUID;
+
+        /* SHA1 hash the key-GUID */
+        std::array<unsigned char, 20> hash;
+        SHA1((const unsigned char *)key.data(), key.length(), hash.data());
+
+        /* Base64 encode the SHA1 hash */
+        BIO *bio, *b64;
+        BUF_MEM *bufferPtr;
+        b64 = BIO_new(BIO_f_base64());
+        bio = BIO_new(BIO_s_mem());
+        bio = BIO_push(b64, bio);
+        BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+        BIO_write(bio, hash.data(), hash.size());
+        BIO_flush(bio);
+        BIO_get_mem_ptr(bio, &bufferPtr);
+        key = std::string(bufferPtr->data, bufferPtr->length);
+        BIO_set_close(bio, BIO_NOCLOSE);
+        BIO_free_all(bio);
     }
 
     void read_handshake() {
@@ -85,7 +145,20 @@ private:
             if (!ec) {
                 if (!error) {
                     on_open();
+                    read();
                 }
+            }
+        });
+    }
+
+    void read() {
+        auto self(shared_from_this());
+        boost::asio::async_read(socket_, in_buffer_,
+            boost::asio::transfer_exactly(2),
+                [this, self](const boost::system::error_code &ec, std::size_t)
+        {
+            if (!ec) {
+                //
             }
         });
     }
