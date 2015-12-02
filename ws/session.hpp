@@ -7,21 +7,19 @@
 #include <regex>
 #include <unordered_map>
 #include <boost/asio.hpp>
+#include "base64.hpp"
 #include "message.hpp"
-
-#include "base64encode.h"
-#include "base64encode.c"
-#include "sha1.h"
-#include "sha1.c"
+#include "sha1.hpp"
 
 using boost::asio::ip::tcp;
 
 namespace ws {
 
-class session : public std::enable_shared_from_this<session> {
+template <typename T>
+class session : public std::enable_shared_from_this<session<T>> {
 public:
-    session(tcp::socket socket) :
-        socket_(std::move(socket)) { }
+    using std::enable_shared_from_this<session<T>>::shared_from_this;
+    session(T& socket_ref) : socket_ref_(socket_ref) { }
     virtual ~session() { }
     void start() {
         read_handshake();
@@ -48,7 +46,7 @@ protected:
         out << '\x82' << '\x05';
         out.write(data, payload_length);
 
-        boost::asio::async_write(socket_, out_buffer_,
+        boost::asio::async_write(socket_ref_, out_buffer_,
             [this, self](const boost::system::error_code &ec, std::size_t)
         {
             if (!ec) {
@@ -63,34 +61,31 @@ protected:
         //
     }
 
-    const tcp::socket &get_socket() {
-        return socket_;
+    const T &get_socket() {
+        return socket_ref_;
     }
 
 private:
-    tcp::socket socket_;
+    T &socket_ref_;
     boost::asio::streambuf in_buffer_;
     boost::asio::streambuf out_buffer_;
     message msg_;
 
-    void generate_accept(std::string &key) const {
+    std::string generate_accept(const std::string &key) const {
         const std::string GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-        key += GUID;
+        std::string formed = key + GUID;
 
-        /* SHA1 hash the key-GUID */
-        std::array<unsigned char, 20> hash;
-        SHA1((char *)hash.data(), key.data(), key.length());
+        /* SHA1 hash the formed string */
+        std::array<char, 20> hash;
+        sha1hash(formed, hash);
 
         /* Base64 encode the SHA1 hash */
-        char b64[32];
-        std::ptrdiff_t diff = base64_encode(hash.data(), hash.size(), b64);
-        std::cout << diff << std::endl;
-        key = std::string(b64, diff);
+        return base64encode(hash.data(), hash.size());
     }
 
     void read_handshake() {
         auto self(shared_from_this());
-        boost::asio::async_read_until(socket_, in_buffer_, "\r\n\r\n",
+        boost::asio::async_read_until(socket_ref_, in_buffer_, "\r\n\r\n",
             [this, self](const boost::system::error_code &ec, std::size_t)
         {
             if (!ec) {
@@ -118,13 +113,12 @@ private:
         if (it == headers_.end()) {
             throw 400;
         }
-        std::string key = it->second;
-        generate_accept(key);
+        std::string accept = generate_accept(it->second);
 
         response << "HTTP/1.1 101 Switching Protocols\r\n"
             << "Upgrade: websocket\r\n"
             << "Connection: Upgrade\r\n"
-            << "Sec-WebSocket-Accept: " << key << "\r\n"
+            << "Sec-WebSocket-Accept: " << accept << "\r\n"
             << "\r\n";
 
         write_handshake(false);
@@ -132,7 +126,7 @@ private:
 
     void write_handshake(bool error) {
         auto self(shared_from_this());
-        boost::asio::async_write(socket_, out_buffer_,
+        boost::asio::async_write(socket_ref_, out_buffer_,
             [this, self, error](const boost::system::error_code &ec, std::size_t)
         {
             if (!ec) {
@@ -146,12 +140,44 @@ private:
 
     void read() {
         auto self(shared_from_this());
-        boost::asio::async_read(socket_, in_buffer_,
-            boost::asio::transfer_exactly(2),
-                [this, self](const boost::system::error_code &ec, std::size_t)
+        boost::asio::async_read(socket_ref_, in_buffer_, boost::asio::transfer_exactly(2),
+            [this, self](const boost::system::error_code &ec, std::size_t)
         {
             if (!ec) {
                 // TODO: parse parse parse
+
+                std::istream in(&in_buffer_);
+                std::array<unsigned char, 2> buffer;
+                in.read((char *)buffer.data(), buffer.size());
+
+                struct {
+                    unsigned int fin :1;
+                    unsigned int res1 :1;
+                    unsigned int res2 :1;
+                    unsigned int res3 :1;
+                    unsigned int opcode :4;
+                    unsigned int mask :1;
+                    unsigned int payload_length :7;
+                } header;
+
+                header = {
+                    static_cast<unsigned int>(buffer[0] >> 7),
+                    static_cast<unsigned int>(buffer[0] & 0x40),
+                    static_cast<unsigned int>(buffer[0] & 0x20),
+                    static_cast<unsigned int>(buffer[0] & 0x10),
+                    static_cast<unsigned int>(buffer[0] & 0x0f),
+                    static_cast<unsigned int>(buffer[1] & 0x80),
+                    static_cast<unsigned int>(buffer[1] & 0x7f)
+                };
+
+                // std::cout << header.fin << std::endl;
+                // std::cout << header.res1 << std::endl;
+                // std::cout << header.res2 << std::endl;
+                // std::cout << header.res3 << std::endl;
+                // std::cout << header.opcode << std::endl;
+                // std::cout << header.mask << std::endl;
+                // std::cout << header.payload_length << std::endl;
+
                 message msg;
                 on_msg(msg);
             }

@@ -5,9 +5,24 @@
 #include <boost/asio.hpp>
 #include "ws.hpp"
 
-class Session : public ws::session {
+using boost::asio::ip::tcp;
+
+/* Base is required with the current design because it is undefined behaviour
+ * to reference and uninitialised member. ws::session<T> would be referencing
+ * socket_ in Session which cannot be initialised before ws::session ctor is
+ * called. */
+class Base {
 public:
-    Session(tcp::socket socket) : ws::session(std::move(socket)) {
+    Base(tcp::socket socket) : socket_(std::move(socket)) { }
+    virtual ~Base() { }
+protected:
+    tcp::socket socket_;
+};
+
+using T = tcp::socket;
+class Session : public Base, public ws::session<T> {
+public:
+    Session(tcp::socket socket) : Base(std::move(socket)), ws::session<T>(socket_) {
         auto endpoint = get_socket().remote_endpoint();
         std::cout << "New connection from " << endpoint.address().to_string()
             << ":" << endpoint.port() << std::endl;
@@ -57,14 +72,31 @@ private:
     std::array<unsigned char, 65536> buffer_;
 };
 
-using T = Session;
-class Server : public ws::server<T> {
+
+class Server {
 public:
-    Server(boost::asio::io_service &io_service, const tcp::endpoint& endpoint) :
-        ws::server<T>(io_service, endpoint) { }
-    ~Server() { }
+    Server(boost::asio::io_service &io_service,
+        const tcp::endpoint& endpoint) :
+        acceptor_(io_service, endpoint),
+        socket_(io_service)
+    {
+        accept();
+    }
+
+    void accept() {
+        acceptor_.async_accept(socket_,
+            [this](const boost::system::error_code &ec)
+        {
+            if (!ec) {
+                std::make_shared<Session>(std::move(socket_))->start();
+            }
+            accept();
+        });
+    }
+
 private:
-    //
+    tcp::acceptor acceptor_;
+    tcp::socket socket_;
 };
 
 int main() {
