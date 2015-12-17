@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Chat Client</title>
+        <style media="screen">
+            p {
+                margin: 0.2em 0;
+            }
+
+            .pane {
+                background-color: #fafafa;
+                border: 1px solid #333;
+                margin-bottom: inherit;
+                padding: 0.5em;
+                font-size: 16px;
+            }
+
+            .msg-pane {
+                height: 200px;
+                overflow: scroll;
+            }
+
+            .input-pane {
+                box-sizing: border-box;
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="pane msg-pane"></div>
+        <input class="pane input-pane" type="input" placeholder="Enter message">
+        <script type="text/javascript">
+            var message = function() {
+                var self = this;
+
+                self.body_length_ = 0;
+                self.header_length = 4;
+                self.max_body_length = 512;
+
+                self.body_length = function(length) {
+                    var max = self.max_body_length;
+                    self.body_length_ = (length < max) ? length : max;
+                };
+
+                self.data = function(data) {
+                    self.data = data;
+                }
+            };
+
+            var ws = new WebSocket("ws://localhost:4567");
+            var msg_pane = document.querySelector(".msg-pane");
+            var input_pane = document.querySelector(".input-pane");
+
+            ws.onopen = function() {
+                var p = document.createElement("p");
+                p.innerHTML = "Connected";
+                msg_pane.appendChild(p);
+                msg_pane.scrollTop = msg_pane.scrollHeight;
+            };
+
+            ws.onmessage = function(msg) {
+                var msg_length = parseInt(msg.data.substr(0, 4));
+                if (msg_length <= 0 || msg_length > 512)
+                    return;
+
+                var p = document.createElement("p");
+                p.innerHTML = msg.data.substr(4, msg.data.length);
+                msg_pane.appendChild(p);
+                msg_pane.scrollTop = msg_pane.scrollHeight;
+            };
+
+            ws.onclose = function() {
+                var p = document.createElement("p");
+                p.innerHTML = "Disconnected";
+                msg_pane.appendChild(p);
+                msg_pane.scrollTop = msg_pane.scrollHeight;
+            };
+
+            ws.onerror = function() {
+                var p = document.createElement("p");
+                p.innerHTML = "Error";
+                msg_pane.appendChild(p);
+                msg_pane.scrollTop = msg_pane.scrollHeight;
+            };
+
+            input_pane.addEventListener('keyup', function(e) {
+                if (e.keyCode != 13)
+                        return;
+
+                var body = input_pane.value.substr(0, 512);
+                var length = body.length;
+
+                if (length == 0) {
+                    return;
+                }
+
+                if (length < 9)
+                    header = "   " + length;
+                else if (length < 99)
+                    header = "  " + length;
+                else if (length < 512)
+                    header = " " + length;
+                else
+                    header = " 512";
+
+                var payload = header + body;
+
+                ws.send(payload);
+
+                input_pane.value = "";
+            }, false);
+        </script>
+    </body>
+</html>

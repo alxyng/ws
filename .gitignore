@@ -29,6 +29,7 @@
 
 # Build files
 main
+examples/chat/chat_server
 
 # Debug files
 *.dSYM

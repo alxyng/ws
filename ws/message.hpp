@@ -18,12 +18,12 @@ public:
         pong = 0x0a
     };
 
-    message() : opcode_(opcode::connection_close) {
-        // tmp
-        payload_ = {'w', 'u', 't'};
-    }
+    message(opcode op, std::vector<unsigned char> payload) :
+        opcode_(op), payload_(std::move(payload)) { }
 
-    opcode get_opcode() const;
+    opcode get_opcode() const {
+        return opcode_;
+    }
 
     void set_opcode(opcode op) {
         opcode_ = op;
