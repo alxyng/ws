@@ -8,6 +8,8 @@
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/archive/iterators/ostream_iterator.hpp>
 
+namespace ws {
+
 /* http://stackoverflow.com/questions/7053538/how-do-i-encode-a-string-to-base64-using-only-boost */
 std::string base64encode(const char *data, std::size_t length) {
     using namespace boost::archive::iterators;
@@ -15,15 +17,12 @@ std::string base64encode(const char *data, std::size_t length) {
     std::stringstream ss;
     const std::string right_padding[] = {"", "==", "="};
 
+    /* 1) Convert binary values to base64 characters
+     * 2) Retrieve 6-bit integers from a sequence of 8-bit bytes */
     typedef
-        base64_from_binary< // convert binary values to base64 characters
-            transform_width< // retrieve 6 bit integers from a sequence of 8 bit bytes
-                const char *,
-                6,
-                8
-            >
-        >
-        base64_text; // compose all the above operations in to a new iterator
+        base64_from_binary< /* 1 */
+            transform_width<const char *, 6, 8> /* 2 */
+        > base64_text;
 
     std::copy(
         base64_text(data),
@@ -33,5 +32,7 @@ std::string base64encode(const char *data, std::size_t length) {
 
     return ss.str() + right_padding[length % 3];
 }
+
+} /* namespace ws */
 
 #endif /* WS_BASE64_HPP */

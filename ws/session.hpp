@@ -48,19 +48,24 @@ protected:
 
     void read() {
         auto self(shared_from_this());
-        boost::asio::async_read(socket_ref_, in_buffer_, boost::asio::transfer_exactly(header_.size()),
+        boost::asio::async_read(socket_ref_, in_buffer_,
+            boost::asio::transfer_exactly(header_.size()),
             [this, self](const boost::system::error_code &ec, std::size_t)
         {
             if (!ec) {
-                in_stream_.read(reinterpret_cast<char *>(header_.data()), header_.size());
+                in_stream_.read(reinterpret_cast<char *>(
+                    header_.data()), header_.size());
 
                 /* Only handle fin messages (right now at least) */
                 if (!(header_[0] >> 7))
                     return;
 
                 /* If reserved bits are not 0, return */
-                if ((header_[0] & 0x40) | (header_[0] & 0x20) | (header_[0] & 0x10))
+                if ((header_[0] & 0x40) | (header_[0] & 0x20) |
+                    (header_[0] & 0x10))
+                {
                     return;
+                }
 
                 /* If the message is not masked, return */
                 if (!(header_[1] >> 7))
@@ -71,8 +76,10 @@ protected:
                     /* Read message mask and payload */
                     read_mask_and_payload(payload_length);
                 } else if (payload_length == 126) {
-                    /* read 2 more bytes and assign this uint16_t to payload_length */
-                    boost::asio::async_read(socket_ref_, in_buffer_, boost::asio::transfer_exactly(2),
+                    /* read 2 more bytes and assign this uint16_t to
+                     * payload_length */
+                    boost::asio::async_read(socket_ref_, in_buffer_,
+                        boost::asio::transfer_exactly(2),
                         [this, self](const boost::system::error_code &ec, std::size_t)
                     {
                         if (!ec) {
@@ -86,8 +93,10 @@ protected:
                         }
                     });
                 } else {
-                    /* read 8 more bytes and assign this uint64_t to payload_length */
-                    boost::asio::async_read(socket_ref_, in_buffer_, boost::asio::transfer_exactly(8),
+                    /* read 8 more bytes and assign this uint64_t to
+                     * payload_length */
+                    boost::asio::async_read(socket_ref_, in_buffer_,
+                        boost::asio::transfer_exactly(8),
                         [this, self](const boost::system::error_code &ec, std::size_t)
                     {
                         if (!ec) {
@@ -106,7 +115,9 @@ protected:
     }
 
     /* Async write data out */
-    void write(message::opcode opcode, const boost::asio::const_buffer &buffer, std::function<void()> cb) {
+    void write(message::opcode opcode, const boost::asio::const_buffer &buffer,
+        std::function<void()> cb)
+    {
         auto self(shared_from_this());
 
         std::size_t payload_length = boost::asio::buffer_size(buffer);
