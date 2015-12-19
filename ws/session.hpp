@@ -80,7 +80,8 @@ protected:
                      * payload_length */
                     boost::asio::async_read(socket_ref_, in_buffer_,
                         boost::asio::transfer_exactly(2),
-                        [this, self](const boost::system::error_code &ec, std::size_t)
+                        [this, self](const boost::system::error_code &ec,
+                            std::size_t)
                     {
                         if (!ec) {
                             uint16_t u16;
@@ -97,7 +98,8 @@ protected:
                      * payload_length */
                     boost::asio::async_read(socket_ref_, in_buffer_,
                         boost::asio::transfer_exactly(8),
-                        [this, self](const boost::system::error_code &ec, std::size_t)
+                        [this, self](const boost::system::error_code &ec,
+                            std::size_t)
                     {
                         if (!ec) {
                             uint64_t u64;
@@ -255,7 +257,8 @@ private:
     void write_handshake(bool error) {
         auto self(shared_from_this());
         boost::asio::async_write(socket_ref_, out_buffer_,
-            [this, self, error](const boost::system::error_code &ec, std::size_t)
+            [this, self, error](const boost::system::error_code &ec,
+                std::size_t)
         {
             if (!ec) {
                 if (!error) {
@@ -271,7 +274,8 @@ private:
         auto self(shared_from_this());
         boost::asio::async_read(socket_ref_, in_buffer_,
             boost::asio::transfer_exactly(4 + payload_length),
-            [this, self, payload_length](const boost::system::error_code &ec, std::size_t)
+            [this, self, payload_length](const boost::system::error_code &ec,
+                std::size_t)
         {
             if (!ec) {
                 std::array<unsigned char, 4> mask;

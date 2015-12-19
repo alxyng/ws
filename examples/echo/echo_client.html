@@ -6,7 +6,7 @@
     </head>
     <body>
         <script>
-            var interval, i = 0;
+            var interval, i = 0, j = 0;
 
             var ws = new WebSocket("ws://localhost:4567");
             ws.binaryType = "arraybuffer";
@@ -15,24 +15,24 @@
 
                 /* Send 5 text messages then 5 binary messages then
                  * close connection */
-                // interval = setInterval(function() {
-                //
-                //     if (i < 5) {
-                //         var str = i.toString();
-                //         ws.send(str);
-                //     } else if (i < 10) {
-                //         var data = new Uint8Array(1);
-                //         data[0] = i;
-                //         ws.send(data);
-                //     } else {
-                //         clearInterval(interval);
-                //         ws.close();
-                //     }
-                //
-                //     ++i;
-                // }, 100);
+                interval = setInterval(function() {
 
-                setTimeout(function() { ws.close(); }, 1000);
+                    if (i < 10) {
+                        var str = i.toString() + " " + j.toString();
+                        ws.send(str);
+                    } else if (i < 20) {
+                        var data = new Uint8Array(2);
+                        data[0] = i;
+                        data[1] = j;
+                        ws.send(data);
+                    } else {
+                        clearInterval(interval);
+                        ws.close();
+                    }
+
+                    ++i;
+                    j = i * 5;
+                }, 100);
             };
             ws.onmessage = function(msg) {
                 console.log("WebSocket message received:", msg.data);

@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <boost/asio.hpp>
 #include "ws.hpp"
@@ -35,13 +36,14 @@ private:
 
         std::cout << "WebSocket message received: ";
         if (msg.get_opcode() == ws::message::opcode::text) {
-            std::cout << "[opcode: text, length " << payload.size() << "] ";
-            std::string s(payload.begin(), payload.end());
-            std::cout << s << std::endl;
+            std::cout << "[opcode: text, length " << payload.size() << "]: "
+                << std::string(payload.begin(), payload.end())
+                << std::endl;
         } else if (msg.get_opcode() == ws::message::opcode::binary) {
-            std::cout << "[opcode: binary, length " << payload.size() << "] ";
+            std::cout << "[opcode: binary, length " << payload.size() << "]: ";
             for (auto &b : payload)
-                std::cout << std::hex << static_cast<unsigned int>(b);
+                std::cout << std::hex << std::setfill('0') << std::setw(2)
+                    << static_cast<unsigned int>(b) << " ";
             std::cout << std::dec << std::endl;
         }
 
