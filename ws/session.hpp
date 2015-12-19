@@ -22,9 +22,17 @@ template <typename T>
 class session : public std::enable_shared_from_this<session<T>> {
 public:
     using std::enable_shared_from_this<session<T>>::shared_from_this;
+
+    enum class state {
+        connecting,
+        open,
+        closing,
+        closed
+    };
+
     session(T& socket_ref) :
-        socket_ref_(socket_ref), in_stream_(&in_buffer_),
-        out_stream_(&out_buffer_) { }
+        socket_ref_(socket_ref), state_(state::connecting),
+        in_stream_(&in_buffer_), out_stream_(&out_buffer_) { }
     virtual ~session() { }
     void start() {
         read_handshake();
@@ -141,16 +149,29 @@ protected:
         boost::asio::async_write(socket_ref_, out_buffer_,
             [this, self, cb](const boost::system::error_code &ec, std::size_t)
         {
-            if (!ec)
-                if (cb)
+            if (!ec) {
+                if (cb) {
                     cb();
+                }
+            }
         });
     };
 
     /* Close connection (initiates closing handshake) */
     void close() {
         write(message::opcode::connection_close, {}, [this]() {
-            on_close();
+            if (state_ == state::closing) {
+                /* Client initiated close */
+                state_ = state::closed;
+                on_close();
+            } else {
+                /* We initiated close - closing from a timer is not supported
+                 * using this method because read() gets called twice, if a
+                 * timer is to be used, a flag can be queried to check if
+                 * a read is already being waited on. */
+                state_ = state::closing;
+                read();
+            }
         });
     }
 
@@ -160,6 +181,7 @@ protected:
 
 private:
     T &socket_ref_;
+    state state_;
     boost::asio::streambuf in_buffer_;
     boost::asio::streambuf out_buffer_;
     std::istream in_stream_;
@@ -226,6 +248,7 @@ private:
         {
             if (!ec) {
                 if (!error) {
+                    state_ = state::open;
                     on_open();
                     read();
                 }
@@ -254,7 +277,15 @@ private:
                         on_msg(msg);
                         break;
                     case message::opcode::connection_close:
-                        close();
+                        if (state_ == state::closing) {
+                            /* We initiated close */
+                            state_ = state::closed;
+                            on_close();
+                        } else {
+                            /* Client initiated close */
+                            state_ = state::closing;
+                            close();
+                        }
                         break;
                     default:
                         break;
