@@ -11,7 +11,7 @@
 namespace ws {
 
 /* http://stackoverflow.com/questions/7053538/how-do-i-encode-a-string-to-base64-using-only-boost */
-std::string base64encode(const char *data, std::size_t length) {
+inline std::string base64encode(const char *data, std::size_t length) {
     using namespace boost::archive::iterators;
 
     std::stringstream ss;
