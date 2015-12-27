@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            .altitude-meter {
+                background-color: #333;
+                height: 400px;
+                width: 400px;
+            }
+
+            .view {
+                position: relative;
+                background-color: #fff;
+                width: 100%;
+                height: 100%;
+                border: 30px solid #ddd;
+                border-radius: 50%;
+            }
+
+            .bg {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(#28adec 0%, #28adec 50%, #a97e55 50%, #a97e55 100%);
+                box-shadow: inset 2px 2px 5px 1px;
+            }
+
+            .level {
+                position: absolute;
+                top: 0;
+                height: 50.5%;
+                width: 20%;
+                border-bottom: 4px solid #f7ec52;
+            }
+
+            .level.left {
+                left: 25%;
+            }
+
+            .level.right {
+                right: 25%;
+            }
+
+            .display {
+                position: absolute;
+                top: 55%;
+                left: 25%;
+                width: 50%;
+                text-align: center;
+                margin: 0 auto;
+                font-family: monospace;
+                font-size: 2em;
+                background-color: #6f918a;
+                box-shadow: inset 2px 2px 5px 1px;
+            }
+
+            button {
+                margin-top: inherit;
+                width: 100px;
+                height: 60px;
+            }
+        </style>
+        <title>Timed Client</title>
+    </head>
+    <body>
+        <div class="altitude-meter">
+            <div class="view">
+                <div class="bg"></div>
+                <div class="level left"></div>
+                <div class="level right"></div>
+                <div class="display">0.0</div>
+            </div>
+        </div>
+        <button class="start" type="button" name="button">Start</button>
+        <button class="stop" type="button" name="button">Stop</button>
+
+        <script>
+            var meter = document.querySelector('.altitude-meter');
+            meter_bg = meter.querySelector('.bg');
+            meter_display = meter.querySelector('.display');
+
+            var ws = null;
+
+            document.querySelector('.start').addEventListener('click', function() {
+                ws = new WebSocket("ws://localhost:4567");
+                ws.binaryType = "arraybuffer";
+                ws.onopen = function() {
+                    console.log("WebSocket connection open");
+                };
+                ws.onmessage = function(msg) {
+                    var data = new DataView(msg.data);
+                    var angle = data.getFloat64(0, true).toFixed(2);
+                    meter_bg.style.transform = 'rotate(' + angle + 'deg)';
+                    meter_display.innerHTML = angle;
+                };
+                ws.onclose = function() {
+                    console.log("WebSocket connection closed");
+                };
+                ws.onerror = function() {
+                    console.log("WebSocket connection error");
+                };
+            });
+
+            document.querySelector('.stop').addEventListener('click', function() {
+                ws.close();
+            });
+        </script>
+    </body>
+</html>

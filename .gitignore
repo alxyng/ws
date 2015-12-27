@@ -30,6 +30,7 @@
 # Build files
 examples/chat/chat_server
 examples/echo/echo_server
+examples/timed/timed_server
 
 # Debug files
 *.dSYM
