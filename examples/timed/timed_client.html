@@ -85,12 +85,20 @@
             meter_display = meter.querySelector('.display');
 
             var ws = null;
+            var interval;
 
             document.querySelector('.start').addEventListener('click', function() {
                 ws = new WebSocket("ws://localhost:4567");
                 ws.binaryType = "arraybuffer";
                 ws.onopen = function() {
                     console.log("WebSocket connection open");
+
+                    /* Test that messages can still be received by the server
+                     * when a timer is being used to send messages */
+                    interval = setInterval(function() {
+                        var a = new ArrayBuffer(4);
+                        ws.send(a);
+                    }, Math.floor(Math.random() * 1000 + 1));
                 };
                 ws.onmessage = function(msg) {
                     var data = new DataView(msg.data);
@@ -107,6 +115,7 @@
             });
 
             document.querySelector('.stop').addEventListener('click', function() {
+                clearInterval(interval);
                 ws.close();
             });
         </script>

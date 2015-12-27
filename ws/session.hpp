@@ -290,6 +290,7 @@ private:
                     case message::opcode::text:
                     case message::opcode::binary:
                         on_msg(msg);
+                        // TODO: read() here and test whether close or write has been called?
                         break;
                     case message::opcode::connection_close:
                         if (state_ == state::closing) {
