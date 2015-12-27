@@ -63,7 +63,7 @@ private:
     }
 
     void on_msg(const ws::message &) override {
-
+        std::cout << "WebSocket message received\n";
     }
 
     void on_close() override {
