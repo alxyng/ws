@@ -24,7 +24,6 @@ public:
 private:
     tcp::socket socket_;
     boost::asio::deadline_timer timer_;
-
     std::uniform_real_distribution<double> unif_;
     std::default_random_engine re_;
     double angle_;
@@ -39,13 +38,15 @@ private:
     }
 
     void timer_cb(const boost::system::error_code &ec) {
+
         if (!ec) {
             write(ws::message::opcode::binary,
                 boost::asio::buffer(&angle_, sizeof (angle_)), [this]()
             {
+                auto self(shared_from_this());
                 small_change();
                 timer_.expires_from_now(boost::posix_time::milliseconds(100));
-                timer_.async_wait([this](const boost::system::error_code &ec) {
+                timer_.async_wait([this, self](const boost::system::error_code &ec) {
                     timer_cb(ec);
                 });
             });
@@ -53,34 +54,16 @@ private:
     }
 
     void on_open() override {
+        auto self(shared_from_this());
         std::cout << "WebSocket connection open\n";
         timer_.expires_from_now(boost::posix_time::milliseconds(100));
-        timer_.async_wait([this](const boost::system::error_code &ec) {
+        timer_.async_wait([this, self](const boost::system::error_code &ec) {
             timer_cb(ec);
         });
     }
 
-    void on_msg(const ws::message &msg) override {
-        const std::vector<unsigned char> payload = msg.get_payload();
+    void on_msg(const ws::message &) override {
 
-        std::cout << "WebSocket message received: ";
-        if (msg.get_opcode() == ws::message::opcode::text) {
-            std::cout << "[opcode: text, length " << payload.size() << "]: "
-                << std::string(payload.begin(), payload.end())
-                << std::endl;
-        } else if (msg.get_opcode() == ws::message::opcode::binary) {
-            std::cout << "[opcode: binary, length " << payload.size() << "]: ";
-            for (auto &b : payload)
-                std::cout << std::hex << std::setfill('0') << std::setw(2)
-                    << static_cast<unsigned int>(b) << " ";
-            std::cout << std::dec << std::endl;
-        }
-
-        write(msg.get_opcode(),
-            boost::asio::buffer(payload.data(), payload.size()), [this]()
-        {
-            read();
-        });
     }
 
     void on_close() override {
