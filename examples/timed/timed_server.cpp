@@ -7,11 +7,18 @@
 
 using boost::asio::ip::tcp;
 
+class session_base {
+public:
+    session_base(tcp::socket socket) : socket_(std::move(socket)) { }
+protected:
+    tcp::socket socket_;
+};
+
 using T = tcp::socket;
-class session : public ws::session<T> {
+class session : private session_base, public ws::session<T> {
 public:
     session(tcp::socket socket) :
-        ws::session<T>(socket_), socket_(std::move(socket)),
+        session_base(std::move(socket)), ws::session<T>(socket_),
         timer_(socket_.get_io_service()), unif_(-1.0, 1.0), angle_(0.0)
     {
         std::cout << "session()\n";
@@ -22,7 +29,6 @@ public:
     }
 
 private:
-    tcp::socket socket_;
     boost::asio::deadline_timer timer_;
     std::uniform_real_distribution<double> unif_;
     std::default_random_engine re_;

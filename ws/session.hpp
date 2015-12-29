@@ -117,6 +117,7 @@ protected:
     }
 
     /* Async write data out */
+    /* TODO: check that state is open before sending a binary or text message */
     void write(message::opcode opcode, const boost::asio::const_buffer &buffer,
         std::function<void()> cb)
     {
