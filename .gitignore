@@ -30,7 +30,12 @@
 # Build files
 examples/chat/chat_server
 examples/echo/echo_server
+examples/echo-secure/echo_server
 examples/timed/timed_server
+
+# Resource files
+examples/echo-secure/echo-secure.key
+examples/echo-secure/echo-secure.crt
 
 # Debug files
 *.dSYM

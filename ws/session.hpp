@@ -33,7 +33,9 @@ public:
     session(T& socket_ref) :
         socket_ref_(socket_ref), state_(state::connecting),
         in_stream_(&in_buffer_), out_stream_(&out_buffer_) { }
+
     virtual ~session() { }
+
     void start() {
         read_handshake();
     }
